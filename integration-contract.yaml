@@ -1,0 +1,158 @@
+# =========================================================
+# Wrike ↔ Act Integration Contract
+# =========================================================
+
+version: 1.0
+
+integration:
+  name: wrike-act-integration
+  description: Sync Wrike tasks with Act CRM opportunities and history events
+
+# =========================================================
+# Environment Configuration
+# =========================================================
+
+environments:
+
+  act:
+    base_url: https://apius.act.com/act.web.api
+    auth_type: basic_to_jwt
+    database_header: Act-Database-Name
+
+  wrike:
+    base_url: https://www.wrike.com/api/v4
+    auth_type: oauth2
+
+# =========================================================
+# Sync Flows
+# =========================================================
+
+sync_flows:
+
+  - name: wrike_task_to_act_opportunity
+    direction: wrike_to_act
+    trigger: webhook
+
+  - name: kixie_call_to_act_history
+    direction: kixie_to_act
+    trigger: webhook
+
+# =========================================================
+# Entity Mapping
+# =========================================================
+
+entity_mapping:
+
+  wrike_task:
+    target_entity: act_opportunity
+
+  kixie_call:
+    target_entity: act_history
+
+# =========================================================
+# Field Mapping
+# =========================================================
+
+field_mapping:
+
+  wrike_task_to_opportunity:
+
+    title:
+      act_field: name
+
+    createdDate:
+      act_field: openDate
+
+    dueDate:
+      act_field: estimatedCloseDate
+
+    description:
+      act_field: customFields.memo
+
+  kixie_call_to_history:
+
+    disposition:
+      act_field: Result
+
+    call_id:
+      act_field: Kixie_Call_ID
+
+    recording_url:
+      act_field: Recording_URL
+
+    sentiment:
+      act_field: Sentiment
+
+    conversation_strength:
+      act_field: Conversation_Strength
+
+    summary:
+      act_field: CI_Summary
+
+    keywords:
+      act_field: Keywords
+
+# =========================================================
+# Identity Rules
+# =========================================================
+
+identity_rules:
+
+  contact_matching:
+    primary_key: email
+    fallback_keys:
+      - first_name+last_name
+      - company_name
+
+  opportunity_matching:
+    primary_key: external_task_id
+
+# =========================================================
+# Conflict Handling
+# =========================================================
+
+conflict_policy:
+
+  bidirectional: false
+  last_write_wins: true
+
+  source_of_truth:
+
+    task_status: wrike
+    opportunity_revenue: act
+
+  delete_behavior: soft_delete_only
+
+# =========================================================
+# Rate Limits and Reliability
+# =========================================================
+
+nfr:
+
+  expected_volume_per_day: 5000
+  max_latency_seconds: 60
+
+  retry_policy:
+    strategy: exponential_backoff
+    max_attempts: 5
+
+  rate_limit_strategy: queue_with_token_bucket
+
+# =========================================================
+# Logging
+# =========================================================
+
+logging:
+
+  format: structured_json
+  pii_policy: mask_email_phone
+
+# =========================================================
+# Future Configuration
+# =========================================================
+
+configurable_mappings:
+
+  wrike_status_to_act_stage: true
+  wrike_user_to_act_owner: true
+
